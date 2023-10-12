@@ -1,9 +1,7 @@
-const { Events, ChannelType, User } = require('discord.js');
-const fs = require('fs');
+const { Events, ChannelType } = require('discord.js');
 
-// Initialize blacklist with 100 most common English words
-const commonWords = fs.readFileSync('blacklist.txt', 'utf8').split('\n');
-const blacklist = new Set(commonWords.slice(0, 100));
+// init blacklist
+let blacklist = ["of","to","and","a","in","is","it","you","that","he","was","for","on","are","with","as","I","his","they","be","at","one","have","this","from","or","had","by","not","word","but","what","some","we","can","out","other","were","all","there","when","up","use","your","how","said","an","each","she","which","do","their","time","if","will","way","about","many","then","them","write","would","like","so","these","her","long","make","thing","see","him","two","has","look","more","day","could","go","come","did","number","sound","no","most","people","my","over","know","water","than","call","first","who","may","down","side","been","now","find", "the"]
 
 // set initial codeword to most commonly used word in english language
 let codeword = 'the'
@@ -12,7 +10,7 @@ let codeword = 'the'
 let infected;
 
 // if the codeword is currently set
-let codewordSet = false;
+let codewordSet = true;
 
 let allServerMembers;
 
@@ -22,6 +20,8 @@ let guild;
 const TIMEOUT = 1000 * 60 * 60 * 12;
 
 module.exports = {
+    getCodewordSet,
+    getBlacklist,
     name: Events.MessageCreate,
     async execute(message) {
         // grab the message content
@@ -56,8 +56,7 @@ module.exports = {
 // returns a string list of the blacklist
 function getBlacklistStr() {
     str = '\n- ';
-    arr = Array.from(blacklist.values());
-    str += arr.join('\n- ')
+    str += blacklist.join('\n- ')
     return str;
 }
 
@@ -71,13 +70,13 @@ function hasCheeseTouch(member) {
 
 // checks if message contains a valid codeword
 function isValidCodeword(message) {
-    return !blacklist.has(message.content.toLowerCase()) && !message.content.includes(' ') && codewordSet === false;
+    return !blacklist.includes(message.content.toLowerCase()) && !message.content.includes(' ') && codewordSet === false;
 }
 
 // handle adding the role and getting codeword
 function assignCheeseTouch(message, role, member, guild) {
 
-    if (codewordSet) {
+    if (!codewordSet) {
         return;
     }
 
@@ -107,7 +106,6 @@ function assignCheeseTouch(message, role, member, guild) {
             .then(() => {
                 infected = member;
                 codewordSet = false;
-
                 let channel = message.channel;
 
                 console.log(`Role '${role.name}' has been assigned to ${infected.displayName}.`);
@@ -130,7 +128,7 @@ async function getCodeword(member, channel) {
     const dmChannel = await member.createDM();
 
     // DM the user that said codeword
-    dmChannel.send(`:cheese: YOU HAVE CONTRACTED THE  **CHEESE TOUCH** :cheese:\nPlease send me your codeword.\nCodewords must only be **ONE WORD** with **no spaces** and cannot be a word someone else has used.\nBlacklist:${getBlacklistStr()}`)
+    dmChannel.send(`:cheese: YOU HAVE CONTRACTED THE  **CHEESE TOUCH** :cheese:\nPlease send me your codeword.\nCodewords must only be **ONE WORD**. If more than one word is detected I will be angry :rage:. It is your responsibility to use real words because **I WILL NOT BE CHECKING TO MAKE SURE THEY'RE REAL**.\nBlacklist:${getBlacklistStr()}`)
         .then(() => {
             const collectorFilter = (m) => m.author.id === infected.id && !m.author.bot && isValidCodeword(m);
             const collector = dmChannel.createMessageCollector({ filter: collectorFilter, time: TIMEOUT });
@@ -145,10 +143,7 @@ async function getCodeword(member, channel) {
                 dmChannel.send('Valid Codeword. Adding to blacklist.');
 
                 // add to blacklist set
-                blacklist.add(msg);
-
-                // append to the file
-                fs.appendFileSync('blacklist.txt', `\n${msg}`);
+                blacklist.push(msg);
 
                 // set the new codeword
                 codeword = msg;
@@ -158,8 +153,8 @@ async function getCodeword(member, channel) {
 
                 console.log(`New codeword = ${codeword}`);
                 console.log(`${codeword} added to the blacklist`);
-
-                channel.send('Codeword set. Resume Cheese Touch!');
+                
+                channel.send(`${message.author} set the codeword. Resume Cheese Touch!`);
 
                 // stop the collector
                 console.log('stopping the collector');
@@ -184,8 +179,8 @@ async function getCodeword(member, channel) {
                     dmChannel.send('Invalid. Please make sure the codeword is only a single word (with no whitespace).');
                     console.log('Reason: codeword includes whitespace.');
                 }
-                else if (blacklist.has(msgContent)) {
-                    dmChannel.send('Invalid. Please make sure the codeword not already on the blacklist.');
+                else if (blacklist.includes(msgContent)) {
+                    dmChannel.send('Invalid. Please make sure the codeword is not already on the blacklist.');
                     console.log('Reason: codeword already exists in the blacklist.');
                 }
 
@@ -252,4 +247,12 @@ function reassignCheeseTouch(newInfected, channel) {
                 getCodeword(newInfected, channel);
             });
     }
+}
+
+function getBlacklist() {
+    return blacklist;
+}
+
+function getCodewordSet() {
+    return codewordSet;
 }

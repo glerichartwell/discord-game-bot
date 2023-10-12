@@ -2,8 +2,9 @@
   "name": "cheesetouchbot",
   "version": "1.0.0",
   "description": "A fun Discord bot. Don't get the cheese touch!",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "test"
   },
   "repository": {
